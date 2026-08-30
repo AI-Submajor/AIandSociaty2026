@@ -269,7 +269,7 @@ button:disabled {
 
   <div class="note">
     レビュー対象は自由入力できます。
-    全角・半角、大文字・小文字、スペースの有無などの表記揺れを吸収して検索します。
+    全角・半角、大文字・小文字、スペースの有無などの表記揺れを吸収して検索します。評価項目はGoogleフォームの現在の選択肢から自動取得します。
   </div>
 
 </section>
@@ -350,7 +350,7 @@ button:disabled {
  *   "https://script.google.com/macros/s/XXXXXXXXXXXX/exec";
  */
 const GAS_API_URL =
-  "https://script.google.com/macros/s/AKfycbzHlwInfFPZ_vb0I1QE8bFJ1Rggw74MC1vu2cUTbBsNoGYieZ1T4WpBI594qBXNzD7i/exec";
+  "https://script.google.com/macros/s/AKfycbyJ-oIBj6d63Uglw0TS-75MkcqwnqyiaZ6OYqT6_TLC-B-DAD2kzuDM-WJgXHgtB0OA/exec";
 
 
 let assignments = [];
@@ -967,15 +967,10 @@ function renderChart(
           labels:
             data.items.map(
               item => {
-                /*
-                 * 「項目1」だけでは内容が分かりにくいため、
-                 * 項目本文の冒頭も表示する。
-                 * 例：項目1　日本語(英語)として読み取れない…
-                 */
                 const text = String(item.label || "")
-                  .replace(/^[①②③④⑤]\s*/, "");
+                  .replace(/^[①-⑳]\s*/, "");
 
-                const maxLength = 18;
+                const maxLength = 20;
 
                 const shortText =
                   text.length > maxLength
@@ -983,9 +978,8 @@ function renderChart(
                     : text;
 
                 return (
-                  "項目" +
-                  item.number +
-                  "　" +
+                  item.id +
+                  " " +
                   shortText
                 );
               }
