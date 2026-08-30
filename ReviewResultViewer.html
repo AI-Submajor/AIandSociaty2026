@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>資料相互レビュー結果</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root {
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --text: #222;
+  --sub: #666;
+  --border: #d9dce1;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "Noto Sans JP",
+    "Yu Gothic",
+    "Meiryo",
+    sans-serif;
+}
+
+.container {
+  width: min(1100px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 32px 0 48px;
+}
+
+h1 {
+  margin: 0 0 24px;
+  font-size: clamp(24px, 4vw, 32px);
+}
+
+h2 {
+  margin: 0 0 16px;
+  font-size: 20px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px;
+  margin-bottom: 20px;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 14px;
+  align-items: end;
+}
+
+label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+select,
+input {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid #c9cdd3;
+  border-radius: 7px;
+  background: #fff;
+  font-size: 15px;
+}
+
+button {
+  height: 44px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 7px;
+  background: #333;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: .86;
+}
+
+button:disabled {
+  opacity: .5;
+  cursor: wait;
+}
+
+.suggestions {
+  position: relative;
+}
+
+.suggestion-list {
+  display: none;
+  position: absolute;
+  z-index: 20;
+  top: 74px;
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  box-shadow: 0 5px 16px rgba(0,0,0,.12);
+}
+
+.suggestion {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+
+.suggestion:hover {
+  background: #f2f5f9;
+}
+
+.summary {
+  display: flex;
+  gap: 28px;
+  margin-bottom: 18px;
+  color: var(--sub);
+}
+
+.summary strong {
+  color: var(--text);
+  font-size: 22px;
+  margin-right: 3px;
+}
+
+.chart-box {
+  height: 380px;
+}
+
+.comments {
+  height: 380px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fafafa;
+  padding: 0 16px;
+}
+
+.comment {
+  display: flex;
+  gap: 12px;
+  padding: 14px 4px;
+  border-bottom: 1px solid #e2e2e2;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.comment:last-child {
+  border-bottom: 0;
+}
+
+.comment-no {
+  flex: 0 0 32px;
+  font-weight: 700;
+  color: #555;
+}
+
+.status {
+  padding: 18px;
+  border-radius: 8px;
+  background: #f0f2f5;
+  color: #666;
+  text-align: center;
+}
+
+.error {
+  background: #fff0f0;
+  color: #a40000;
+  text-align: left;
+}
+
+.note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #777;
+}
+
+.last-updated {
+  margin-top: 10px;
+  text-align: right;
+  font-size: 12px;
+  color: #777;
+}
+
+@media (max-width: 720px) {
+  .filters {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-box,
+  .comments {
+    height: 360px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>資料相互レビュー結果</h1>
+
+<section class="card">
+
+  <div class="filters">
+
+    <div>
+      <label for="assignment">課題</label>
+
+      <select id="assignment" disabled>
+        <option>読み込み中...</option>
+      </select>
+    </div>
+
+
+    <div class="suggestions">
+
+      <label for="target">レビュー対象</label>
+
+      <input
+        id="target"
+        type="text"
+        autocomplete="off"
+        disabled
+        placeholder="例：例文1ソロレビュー"
+      >
+
+      <div
+        id="suggestionList"
+        class="suggestion-list"
+      ></div>
+
+    </div>
+
+
+    <button
+      id="showButton"
+      disabled
+    >
+      表示
+    </button>
+
+  </div>
+
+  <div class="note">
+    レビュー対象は自由入力できます。
+    全角・半角、大文字・小文字、スペースの有無などの表記揺れを吸収して検索します。
+  </div>
+
+</section>
+
+
+<section class="card">
+
+  <h2>レビュー結果</h2>
+
+  <div class="summary">
+
+    <div>
+      レビュー件数
+      <strong id="reviewCount">0</strong>件
+    </div>
+
+    <div>
+      コメント
+      <strong id="commentCount">0</strong>件
+    </div>
+
+  </div>
+
+
+  <div
+    id="chartStatus"
+    class="status"
+  >
+    課題とレビュー対象を選択してください。
+  </div>
+
+
+  <div
+    id="chartBox"
+    class="chart-box"
+    style="display:none;"
+  >
+    <canvas id="reviewChart"></canvas>
+  </div>
+
+
+  <div
+    id="lastUpdated"
+    class="last-updated"
+  ></div>
+
+</section>
+
+
+<section class="card">
+
+  <h2>改善コメント</h2>
+
+  <div
+    id="comments"
+    class="comments"
+  >
+    <div class="status">
+      課題とレビュー対象を選択してください。
+    </div>
+  </div>
+
+</section>
+
+</div>
+
+
+<script>
+
+/*
+ * ============================================================
+ * GAS WebアプリURLを設定
+ * ============================================================
+ *
+ * 例：
+ *
+ * const GAS_API_URL =
+ *   "https://script.google.com/macros/s/XXXXXXXXXXXX/exec";
+ */
+const GAS_API_URL =
+  "https://script.google.com/macros/s/AKfycbzHlwInfFPZ_vb0I1QE8bFJ1Rggw74MC1vu2cUTbBsNoGYieZ1T4WpBI594qBXNzD7i/exec";
+
+
+let assignments = [];
+let targets = [];
+let chart = null;
+
+
+/* ============================================================
+   GAS API
+============================================================ */
+
+function callApi(action, params = {}) {
+
+  return new Promise(
+    (resolve, reject) => {
+
+      const callbackName =
+        "reviewCallback_" +
+        Date.now() +
+        "_" +
+        Math.random()
+          .toString(36)
+          .slice(2);
+
+
+      const script =
+        document.createElement("script");
+
+
+      window[callbackName] =
+        data => {
+
+          delete window[callbackName];
+
+          if (script.parentNode) {
+            script.parentNode.removeChild(script);
+          }
+
+          if (!data || !data.ok) {
+
+            reject(
+              new Error(
+                data && data.error
+                  ? data.error
+                  : "APIエラー"
+              )
+            );
+
+            return;
+          }
+
+          resolve(data);
+        };
+
+
+      const query =
+        new URLSearchParams({
+          action,
+          callback: callbackName,
+          ...params
+        });
+
+
+      script.src =
+        GAS_API_URL +
+        "?" +
+        query.toString();
+
+
+      script.onerror =
+        () => {
+
+          delete window[callbackName];
+
+          if (script.parentNode) {
+            script.parentNode.removeChild(script);
+          }
+
+          reject(
+            new Error(
+              "GASに接続できませんでした。"
+            )
+          );
+        };
+
+
+      document.body.appendChild(script);
+
+
+      /*
+       * 通信異常時に画面が永久に待たないようにする。
+       */
+      setTimeout(
+        () => {
+
+          if (window[callbackName]) {
+
+            delete window[callbackName];
+
+            if (script.parentNode) {
+              script.parentNode.removeChild(script);
+            }
+
+            reject(
+              new Error(
+                "GASからの応答がタイムアウトしました。"
+              )
+            );
+          }
+
+        },
+        20000
+      );
+
+    }
+  );
+}
+
+
+/* ============================================================
+   初期化
+============================================================ */
+
+async function initialize() {
+
+  if (
+    !GAS_API_URL ||
+    GAS_API_URL.includes(
+      "ここにGAS"
+    )
+  ) {
+
+    showError(
+      "index.html の GAS_API_URL に、GASのWebアプリURLを設定してください。"
+    );
+
+    return;
+  }
+
+
+  try {
+
+    /*
+     * 最初は課題一覧だけ取得。
+     */
+    const data =
+      await callApi(
+        "bootstrap"
+      );
+
+
+    assignments =
+      data.assignments || [];
+
+
+    initializeAssignments();
+
+
+    document
+      .getElementById("assignment")
+      .disabled = false;
+
+
+    document
+      .getElementById("target")
+      .disabled = false;
+
+
+    document
+      .getElementById("showButton")
+      .disabled = false;
+
+  } catch (error) {
+
+    showError(
+      error.message
+    );
+  }
+}
+
+
+/* ============================================================
+   課題一覧
+============================================================ */
+
+function initializeAssignments() {
+
+  const select =
+    document
+      .getElementById(
+        "assignment"
+      );
+
+
+  select.innerHTML =
+    '<option value="">課題を選択してください</option>';
+
+
+  assignments.forEach(
+    assignment => {
+
+      const option =
+        document
+          .createElement(
+            "option"
+          );
+
+
+      option.value =
+        assignment;
+
+
+      option.textContent =
+        assignment;
+
+
+      select.appendChild(
+        option
+      );
+    }
+  );
+}
+
+
+/* ============================================================
+   表記揺れ吸収
+============================================================ */
+
+function normalizeText(
+  value
+) {
+
+  return String(
+    value ?? ""
+  )
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .trim();
+}
+
+
+/* ============================================================
+   レビュー対象候補
+============================================================ */
+
+async function loadTargets() {
+
+  const assignment =
+    document
+      .getElementById(
+        "assignment"
+      )
+      .value;
+
+
+  targets = [];
+
+  hideSuggestions();
+
+
+  if (!assignment) {
+    return;
+  }
+
+
+  try {
+
+    /*
+     * 選択した課題の対象名だけを取得。
+     * 回答10,000行は取得しない。
+     */
+    const data =
+      await callApi(
+        "targets",
+        {
+          assignment
+        }
+      );
+
+
+    targets =
+      data.targets || [];
+
+
+  } catch (error) {
+
+    showError(
+      error.message
+    );
+  }
+}
+
+
+function showSuggestions() {
+
+  const input =
+    document
+      .getElementById(
+        "target"
+      );
+
+
+  const list =
+    document
+      .getElementById(
+        "suggestionList"
+      );
+
+
+  const keyword =
+    normalizeText(
+      input.value
+    );
+
+
+  const filtered =
+    keyword
+      ? targets.filter(
+          target =>
+            normalizeText(target)
+              .includes(keyword)
+        )
+      : targets;
+
+
+  list.innerHTML =
+    "";
+
+
+  if (!filtered.length) {
+
+    hideSuggestions();
+
+    return;
+  }
+
+
+  filtered
+    .slice(0, 30)
+    .forEach(
+      target => {
+
+        const div =
+          document
+            .createElement(
+              "div"
+            );
+
+
+        div.className =
+          "suggestion";
+
+
+        div.textContent =
+          target;
+
+
+        div.addEventListener(
+          "mousedown",
+          event => {
+
+            event.preventDefault();
+
+            input.value =
+              target;
+
+            hideSuggestions();
+          }
+        );
+
+
+        list.appendChild(
+          div
+        );
+      }
+    );
+
+
+  list.style.display =
+    "block";
+}
+
+
+function hideSuggestions() {
+
+  document
+    .getElementById(
+      "suggestionList"
+    )
+    .style.display =
+      "none";
+}
+
+
+/* ============================================================
+   検索
+============================================================ */
+
+async function showResults() {
+
+  const assignment =
+    document
+      .getElementById(
+        "assignment"
+      )
+      .value;
+
+
+  const target =
+    document
+      .getElementById(
+        "target"
+      )
+      .value;
+
+
+  if (
+    !assignment ||
+    !target
+  ) {
+
+    showChartStatus(
+      "課題とレビュー対象を入力してください。"
+    );
+
+    return;
+  }
+
+
+  const button =
+    document
+      .getElementById(
+        "showButton"
+      );
+
+
+  button.disabled =
+    true;
+
+
+  button.textContent =
+    "検索中...";
+
+
+  hideSuggestions();
+
+
+  try {
+
+    /*
+     * ブラウザから送るのは
+     * 課題名＋レビュー対象名だけ。
+     */
+    const data =
+      await callApi(
+        "result",
+        {
+          assignment,
+          target
+        }
+      );
+
+
+    renderResult(
+      data
+    );
+
+  } catch (error) {
+
+    showError(
+      error.message
+    );
+
+  } finally {
+
+    button.disabled =
+      false;
+
+
+    button.textContent =
+      "表示";
+  }
+}
+
+
+/* ============================================================
+   結果表示
+============================================================ */
+
+function renderResult(
+  data
+) {
+
+  document
+    .getElementById(
+      "reviewCount"
+    )
+    .textContent =
+      data.reviewCount || 0;
+
+
+  document
+    .getElementById(
+      "commentCount"
+    )
+    .textContent =
+      data.commentCount || 0;
+
+
+  renderChart(
+    data
+  );
+
+
+  renderComments(
+    data.comments || []
+  );
+
+
+  document
+    .getElementById(
+      "lastUpdated"
+    )
+    .textContent =
+      "データ取得：" +
+      formatDate(
+        data.generatedAt
+      );
+}
+
+
+/* ============================================================
+   グラフ
+============================================================ */
+
+function renderChart(
+  data
+) {
+
+  const status =
+    document
+      .getElementById(
+        "chartStatus"
+      );
+
+
+  const box =
+    document
+      .getElementById(
+        "chartBox"
+      );
+
+
+  if (
+    !data.reviewCount
+  ) {
+
+    destroyChart();
+
+
+    box.style.display =
+      "none";
+
+
+    status.style.display =
+      "block";
+
+
+    status.className =
+      "status";
+
+
+    status.textContent =
+      "該当するレビュー結果がありません。";
+
+
+    return;
+  }
+
+
+  status.style.display =
+    "none";
+
+
+  box.style.display =
+    "block";
+
+
+  destroyChart();
+
+
+  const ctx =
+    document
+      .getElementById(
+        "reviewChart"
+      )
+      .getContext(
+        "2d"
+      );
+
+
+  chart =
+    new Chart(
+      ctx,
+      {
+
+        type:
+          "bar",
+
+
+        data: {
+
+          labels:
+            data.items.map(
+              item => {
+                /*
+                 * 「項目1」だけでは内容が分かりにくいため、
+                 * 項目本文の冒頭も表示する。
+                 * 例：項目1　日本語(英語)として読み取れない…
+                 */
+                const text = String(item.label || "")
+                  .replace(/^[①②③④⑤]\s*/, "");
+
+                const maxLength = 18;
+
+                const shortText =
+                  text.length > maxLength
+                    ? text.slice(0, maxLength) + "…"
+                    : text;
+
+                return (
+                  "項目" +
+                  item.number +
+                  "　" +
+                  shortText
+                );
+              }
+            ),
+
+
+          datasets: [
+
+            {
+
+              label:
+                "レビュー件数",
+
+
+              data:
+                data.items.map(
+                  item =>
+                    item.count
+                ),
+
+
+              borderWidth:
+                1
+
+            }
+
+          ]
+
+        },
+
+
+        options: {
+
+          indexAxis:
+            "y",
+
+
+          responsive:
+            true,
+
+
+          maintainAspectRatio:
+            false,
+
+
+          plugins: {
+
+            legend: {
+
+              display:
+                false
+
+            },
+
+
+            tooltip: {
+
+              callbacks: {
+
+                afterLabel:
+                  context => {
+
+                    return data
+                      .items[
+                        context.dataIndex
+                      ]
+                      .label;
+                  }
+
+              }
+
+            }
+
+          },
+
+
+          scales: {
+
+            x: {
+
+              beginAtZero:
+                true,
+
+
+              ticks: {
+
+                precision:
+                  0
+
+              }
+
+            }
+
+          }
+
+        }
+
+      }
+    );
+}
+
+
+function destroyChart() {
+
+  if (chart) {
+
+    chart.destroy();
+
+    chart =
+      null;
+  }
+}
+
+
+/* ============================================================
+   コメント
+============================================================ */
+
+function renderComments(
+  comments
+) {
+
+  const container =
+    document
+      .getElementById(
+        "comments"
+      );
+
+
+  container.innerHTML =
+    "";
+
+
+  if (
+    !comments.length
+  ) {
+
+    const div =
+      document
+        .createElement(
+          "div"
+        );
+
+
+    div.className =
+      "status";
+
+
+    div.textContent =
+      "改善コメントはありません。";
+
+
+    container.appendChild(
+      div
+    );
+
+
+    return;
+  }
+
+
+  comments.forEach(
+    (comment, index) => {
+
+      const row =
+        document
+          .createElement(
+            "div"
+          );
+
+
+      row.className =
+        "comment";
+
+
+      const number =
+        document
+          .createElement(
+            "div"
+          );
+
+
+      number.className =
+        "comment-no";
+
+
+      number.textContent =
+        (index + 1) +
+        ".";
+
+
+      const text =
+        document
+          .createElement(
+            "div"
+          );
+
+
+      /*
+       * ユーザー入力をHTMLとして実行させない。
+       */
+      text.textContent =
+        comment;
+
+
+      row.appendChild(
+        number
+      );
+
+
+      row.appendChild(
+        text
+      );
+
+
+      container.appendChild(
+        row
+      );
+    }
+  );
+}
+
+
+/* ============================================================
+   状態・エラー
+============================================================ */
+
+function showChartStatus(
+  message
+) {
+
+  destroyChart();
+
+
+  document
+    .getElementById(
+      "chartBox"
+    )
+    .style.display =
+      "none";
+
+
+  const status =
+    document
+      .getElementById(
+        "chartStatus"
+      );
+
+
+  status.style.display =
+    "block";
+
+
+  status.className =
+    "status";
+
+
+  status.textContent =
+    message;
+}
+
+
+function showError(
+  message
+) {
+
+  destroyChart();
+
+
+  document
+    .getElementById(
+      "chartBox"
+    )
+    .style.display =
+      "none";
+
+
+  const status =
+    document
+      .getElementById(
+        "chartStatus"
+      );
+
+
+  status.style.display =
+    "block";
+
+
+  status.className =
+    "status error";
+
+
+  status.textContent =
+    message;
+}
+
+
+function formatDate(
+  value
+) {
+
+  if (!value) {
+    return "";
+  }
+
+
+  const date =
+    new Date(
+      value
+    );
+
+
+  if (
+    isNaN(
+      date.getTime()
+    )
+  ) {
+
+    return value;
+  }
+
+
+  return date.toLocaleString(
+    "ja-JP",
+    {
+
+      year:
+        "numeric",
+
+      month:
+        "2-digit",
+
+      day:
+        "2-digit",
+
+      hour:
+        "2-digit",
+
+      minute:
+        "2-digit"
+
+    }
+  );
+}
+
+
+/* ============================================================
+   イベント
+============================================================ */
+
+document
+  .getElementById(
+    "assignment"
+  )
+  .addEventListener(
+    "change",
+    async () => {
+
+      document
+        .getElementById(
+          "target"
+        )
+        .value =
+          "";
+
+
+      document
+        .getElementById(
+          "reviewCount"
+        )
+        .textContent =
+          "0";
+
+
+      document
+        .getElementById(
+          "commentCount"
+        )
+        .textContent =
+          "0";
+
+
+      await loadTargets();
+
+
+      showChartStatus(
+        "レビュー対象を入力してください。"
+      );
+    }
+  );
+
+
+document
+  .getElementById(
+    "target"
+  )
+  .addEventListener(
+    "focus",
+    () => {
+
+      if (
+        targets.length
+      ) {
+
+        showSuggestions();
+      }
+    }
+  );
+
+
+document
+  .getElementById(
+    "target"
+  )
+  .addEventListener(
+    "input",
+    showSuggestions
+  );
+
+
+document
+  .getElementById(
+    "target"
+  )
+  .addEventListener(
+    "keydown",
+    event => {
+
+      if (
+        event.key ===
+        "Enter"
+      ) {
+
+        hideSuggestions();
+
+        showResults();
+      }
+    }
+  );
+
+
+document
+  .getElementById(
+    "showButton"
+  )
+  .addEventListener(
+    "click",
+    showResults
+  );
+
+
+document
+  .addEventListener(
+    "click",
+    event => {
+
+      const area =
+        document
+          .querySelector(
+            ".suggestions"
+          );
+
+
+      if (
+        !area.contains(
+          event.target
+        )
+      ) {
+
+        hideSuggestions();
+      }
+    }
+  );
+
+
+initialize();
+
+</script>
+
+</body>
+</html>
